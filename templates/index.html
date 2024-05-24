@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Interactive Graph</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            flex: 1;
+            padding: 10px;
+        }
+        .checklist-container {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            border-right: 1px solid #ccc;
+        }
+        .graph-container {
+            flex: 3;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #myChart {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Interactive Graph</h1>
+    <div class="container">
+        <div class="checklist-container">
+            <h3>Select Topics</h3>
+            <button id="select-all">Select All</button>
+            <button id="unselect-all">Unselect All</button>
+            <div id="checklist">
+                {% for topic in topics %}
+                    <label>
+                        <input type="checkbox" name="topics" value="{{ topic }}"> {{ topic }}
+                    </label><br>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="graph-container">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            let chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: 60 }, (_, i) => `${i + 1}`), // Assuming data length is fixed to 60
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Months starting in 2019'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Normalized Occurrence'
+                            }
+                        }
+                    }
+                }
+            });
+
+            function updateChart(data) {
+                chart.data.labels = Array.from({ length: Object.values(data)[0].length }, (_, i) => `${i + 1}`); // Set labels dynamically based on data length
+                chart.data.datasets = [];
+                for (const [topic, values] of Object.entries(data)) {
+                    chart.data.datasets.push({
+                        label: topic,
+                        data: values,
+                        borderColor: getRandomColor(),
+                        fill: false
+                    });
+                }
+                chart.update();
+            }
+
+            function getRandomColor() {
+                const letters = '0123456789ABCDEF';
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+
+            const data = {{ data|tojson }};
+
+            $('input[name="topics"]').change(function() {
+                const selectedTopics = $('input[name="topics"]:checked').map(function() {
+                    return this.value;
+                }).get();
+
+                const filteredData = {};
+                selectedTopics.forEach(topic => {
+                    filteredData[topic] = data[topic];
+                });
+
+                updateChart(filteredData);
+            });
+
+            // Initial chart update with all selected topics
+            updateChart(data);
+
+            // Select all button
+            $('#select-all').click(function() {
+                $('input[name="topics"]').prop('checked', true).trigger('change');
+            });
+
+            // Unselect all button
+            $('#unselect-all').click(function() {
+                $('input[name="topics"]').prop('checked', false).trigger('change');
+            });
+        });
+    </script>
+</body>
+</html>
